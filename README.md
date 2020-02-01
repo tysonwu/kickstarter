@@ -12,7 +12,11 @@ There are two separate parts under this repo:
 
 
 
-## Data
+## Data Visualisation
+
+> **This part was an academic project done in Fall 2018. As a result, older dataset were used, up to November 2018. **
+
+The data visualization is made in R with R shinyApp, a web application dashboard. The dashboard with analytics result can be found [here](https://tysonwu.shinyapps.io/Kickstarter/).
 
 The dataset employed was obtained from <url>webrobots.io</url>, a data collection website hosting scrapped data.
 
@@ -35,15 +39,7 @@ The attributes in the dataset are listed as follows:
 
 
 
-## Data Visualization
-
-> **This part was an academic project done in Fall 2018. As a result, older dataset were used, up to November 2018. **
-
-The data visualization is made in R with R shinyApp, a web application dashboard. The dashboard with analytics result can be found [here](https://tysonwu.shinyapps.io/Kickstarter/).
-
-
-
 ## Prediction
 
-> **This part is under construction.**
+> **This part is under construction, as at January 2020.**
 
