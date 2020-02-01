@@ -1,5 +1,5 @@
 # Kickstarter data
-> This repo is under construction.
+> **This repo is under construction.**
 
 ## Kickstarter campaign data visualization and prediction
 
