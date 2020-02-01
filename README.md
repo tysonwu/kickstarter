@@ -37,4 +37,13 @@ The attributes in the dataset are listed as follows:
 
 ## Data Visualization
 
+> **This part was an academic project done in Fall 2018. As a result, older dataset were used, up to November 2018. **
+
 The data visualization is made in R with R shinyApp, a web application dashboard. The dashboard with analytics result can be found [here](https://tysonwu.shinyapps.io/Kickstarter/).
+
+
+
+## Prediction
+
+> **This part is under construction.**
+
