@@ -1,0 +1,227 @@
+---
+title: "Project main"
+output: html_document
+---
+
+## R Markdown
+
+```{R}
+library(tidyverse)
+library(ggplot2)
+library(stringr)
+library(dplyr)
+library(plyr)
+library(plotly)
+library(RColorBrewer)
+```
+
+Data from
+https://webrobots.io/kickstarter-datasets/
+
+```{R}
+setwd("/Users/TysonWu/Documents/Year4Sem1/STAT3622/Project/dataset/ks")
+options(scipen = 999)
+file_list <- list.files()
+df <- read.csv("Kickstarter.csv")
+for (x in file_list){
+  temp_df <- read.csv(x)
+  df<-rbind(df, temp_df)
+  rm(temp_df)
+}
+rm(x)
+```
+
+Data cleaning
+```{R}
+date_cols <- c("created_at", "deadline", "launched_at", "state_changed_at")
+df[date_cols] <- lapply(lapply(df[date_cols],as.POSIXlt.POSIXct),as.Date)
+rm(date_cols)
+```
+
+Year column
+```{R}
+df$days <- df$deadline - df$launched_at
+df$launch_at_year <- format(df$launched_at, format="%Y")
+```
+
+Get category names from JSON formatted data
+```{R}
+##Sub category
+cat <- sub(".*name\":\"*(.*?) *\",\"slug.*", "\\1", df$category)
+df <- cbind(df,cat)
+rm(cat)
+colnames(df)[40] <- "sub_category"
+
+##Main category
+cat <- sub(".*slug\":\"*(.*?) *\",\"pos.*", "\\1", df$category)
+cat <- word(cat,1,sep = "/")
+df <- cbind(df,cat)
+colnames(df)[41] <- "main_category"
+rm(cat)
+
+##State
+state <- sub(".*state\":\"*(.*?) *\",\"type.*", "\\1", df$location)
+df <- cbind(df,state)
+colnames(df)[42] <- "country_state"
+rm(state)
+
+##Launch Weekday
+df$launched_weekday <- weekdays(df$launched_at)
+df$launch_at_year_month <- format(df$launched_at, format = "%Y%m")
+df$launch_at_year_month <- as.Date(paste(df$launch_at_year_month,01), format= "%Y%m%d")
+
+# df_sf$launch_at_year_month <- format(df_sf$launched_at, format = "%Y%m")
+# df_sf$launch_at_year_month <- as.Date(paste(df_sf$launch_at_year_month,01), format= "%Y%m%d")
+
+##Goal in USD
+df$usd_goal = df$static_usd_rate * df$goal
+
+##usd pledged per backer per project
+df$usd_pledged_per_backer = df$usd_pledged / df$backers_count
+
+row.names(df) <- c(1:209506)
+```
+
+Select useful columns
+```{R}
+exclude_variables <- names(df) %in% c("category", "creator", "currency_symbol", "friends", "is_starred", "location", "permissions", "photo", "profile", "slug", "source_url", "urls", "converted_pledged_amount", "current_currency", "currency_trailing_code", "fx_rate", "goal", "is_backing", "is_starrable", "static_usd_rate", "usd_type", "pledged")
+df2 <- df[!exclude_variables]
+
+
+```
+
+other data set
+```{R}
+##success and fail only
+df_sf <- dplyr::filter(df2, state == 'failed' | state == 'successful')
+df_s <- dplyr::filter(df_sf, state == 'successful')
+df_f <- dplyr::filter(df_sf, state == 'failed')
+```
+
+```{R}
+# 1
+# main_category / launch_at_year / country
+freq_table_total <- as.data.frame(table(df2$main_category))
+plot_ly(x = freq_table_total$Var1, y = freq_table_total$Freq,  type = "bar", color = freq_table_total$Var1)
+
+```
+
+```{R}
+# 1b
+df_country_map <- as.data.frame(table(df2$country))
+
+# light grey boundaries
+l <- list(color = toRGB("grey"), width = 0.5)
+
+# specify map projection/options
+g <- list(
+  showframe = FALSE,
+  showcoastlines = FALSE,
+  projection = list(type = 'Mercator')
+)
+
+p <- plot_geo(df_country_map) %>%
+  add_trace(
+    z = df_country_map$Freq, color = df_country_map$Freq, colors = 'Blues',
+    text = df_country_map$country, locations = df_country_map$country, marker = list(line = l)
+  ) %>%
+  colorbar(title = "Number of Kickstarter Projects") %>%
+  layout(
+    title = "Number of Kickstarter Projects by Country",
+    geo = g
+  )
+
+
+```
+
+```{R}
+# 2
+launch_at_year_month_freq <- table(df_sf$launch_at_year_month)
+launch_at_year_month_freq <- as.data.frame(launch_at_year_month_freq)
+colnames(launch_at_year_month_freq) = c("Month", "Frequency")
+
+launch_at_year_month_freq_s <- table(df_s$launch_at_year_month)
+launch_at_year_month_freq_s <- as.data.frame(launch_at_year_month_freq_s)
+colnames(launch_at_year_month_freq_s) = c("Month", "Frequency")
+
+launch_at_year_month_freq_f <- table(df_f$launch_at_year_month)
+launch_at_year_month_freq_f <- as.data.frame(launch_at_year_month_freq_f)
+colnames(launch_at_year_month_freq_f) = c("Month", "Frequency")
+
+plot_ly(x = launch_at_year_month_freq$Month, y = launch_at_year_month_freq$Frequency, type = "scatter", mode = "lines+markers", name = "All projects") %>% add_trace(y = launch_at_year_month_freq_f$Frequency, name = "Failure") %>% add_trace(y = launch_at_year_month_freq_s$Frequency, name = "Successful")
+
+```
+
+```{R}
+# 3
+main_category_freq_all <- as.data.frame(table(df2$main_category))
+main_category_freq_s <- as.data.frame(table(df_s$main_category))
+main_category_freq_f <- as.data.frame(table(df_f$main_category))
+
+srate <- data.frame(main_category = main_category_freq_all$Var1, status = "s" ,rate = main_category_freq_s$Freq/main_category_freq_all$Freq)
+
+frate <- data.frame(main_category = main_category_freq_all$Var1, status = "f", rate = main_category_freq_f$Freq/main_category_freq_all$Freq)
+
+orate <- data.frame(main_category = main_category_freq_all$Var1, status = "o", rate = 1-srate$rate-frate$rate)
+
+rate <- rbind(srate,frate,orate)
+
+#for loop to loop other pie charts
+rates_art <- filter(rate, main_category == "art")
+plot_ly(rates_art, type = "pie", values = rates_art$rate)
+#
+
+```
+
+```{R}
+# 4 only count those success/failed
+top10goal <- dplyr::top_n(df_sf, 10, usd_goal)
+##also change for other variables
+```
+
+```{R}
+# 5
+# goal, pledged
+goal_non_zero <- filter(df_sf, usd_goal != 0)
+plot_ly(x = goal_non_zero$usd_goal, type = "histogram")
+
+# logarithmic transformation not done
+
+```
+
+```{R}
+# 6
+# df_sf$usd_pledged_per_backer = df_sf$usd_pledged / df_sf$backers_count
+# outliers not removed
+
+plot_ly(df_sf, y = df_sf$usd_pledged_per_backer, color = df_sf$main_category, type = "bar")
+
+```
+
+```{R}
+# 7
+usd_pledged_agg_month <- df_sf %>% group_by(launch_at_year_month) %>% dplyr::summarise(usd_pledged_mean = mean(usd_pledged))
+
+plot_ly(x = usd_pledged_agg_month$launch_at_year_month, y = usd_pledged_agg_month$usd_pledged_mean, type = "scatter", mode = "lines")
+
+```
+
+```{R}
+# 8
+
+
+```
+
+```{R}
+# 9
+# srate_by_period <- df_sf %>% group_by(days) %>% dplyr::summarise(srate_by_period = count)
+
+period_freq_s <- filter(as.data.frame(table(df2$days, df2$state)), Var2 == 'successful')
+period_freq_all <- as.data.frame(table(df2$days))
+period_srate <- data.frame(days = period_freq_all$Var1, rate = period_freq_s$Freq / period_freq_all$Freq)
+
+plot_ly(x = period_srate$days, y = period_srate$rate, type = "scatter", mode = "lines")
+
+# have to adjust binwidth to 5 days (now is 1 day)
+
+```
